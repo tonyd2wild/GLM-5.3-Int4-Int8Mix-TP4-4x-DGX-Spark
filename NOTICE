@@ -1,0 +1,55 @@
+GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark
+Copyright (c) 2026 Tony D (@tonyd2wild)
+
+Licensed under the Apache License, Version 2.0.
+
+--------------------------------------------------------------------------------
+ATTRIBUTION
+--------------------------------------------------------------------------------
+
+QUANTIZATION RECIPE
+    The `config_groups` and `ignore` list used by quant/glm53_quant_stream.py are
+    taken VERBATIM from:
+
+        QuantTrio/GLM-5.2-Int4-Int8Mix
+        https://huggingface.co/QuantTrio/GLM-5.2-Int4-Int8Mix
+        (config.json -> quantization_config)
+
+    The recipe -- which layers are 4-bit vs 8-bit, group vs channel strategy, and
+    critically WHICH MODULES ARE LEFT AT FULL PRECISION (MoE router, DSA indexer,
+    LM head, layer 0, MTP norms) -- is theirs. This repository applies it to a
+    different base model; it does not originate it.
+
+BASE MODEL
+    zai-org/GLM-5.3 and zai-org/GLM-5.3-BF16
+    https://huggingface.co/zai-org/GLM-5.3-BF16
+    Subject to the upstream model license (see the base model repository).
+
+GB10 / sm121 SERVING RECIPE
+    launch/launch-glm53-tp4.sh is derived from launch.sh in:
+
+        tonyd2wild/GLM-5.2-QuantTrio-200K-4x-DGX-Spark--36tok-s
+        https://github.com/tonyd2wild/GLM-5.2-QuantTrio-200K-4x-DGX-Spark--36tok-s
+
+    which is itself derived from launch.sh in:
+
+        CosmicRaisins/glm-5.2-gb10
+        https://github.com/CosmicRaisins/glm-5.2-gb10
+        Copyright (c) CosmicRaisins, licensed under the Apache License, Version 2.0.
+
+    The 10 sm12x Triton sparse-MLA kernel overlays and the modded vLLM image
+    required to run this on GB10 are NOT vendored here. Obtain them from the
+    GLM-5.2-QuantTrio repository above, which vendors a known-good MATCHED set.
+    Do not mix those overlays with a fresh upstream vLLM checkout: deepseek_v2.py
+    imports `fused_indexer_q_rope_quant` from sparse_attn_indexer.py, and version
+    skew between the two breaks model registration.
+
+QUANTIZATION LIBRARY
+    quant/glm53_quant_stream.py calls compressed-tensors' own calculate_qparams(),
+    quantize() and pack_to_int32() rather than reimplementing scale computation or
+    int4/int8 bit packing.
+
+        https://github.com/neuralmagic/compressed-tensors
+        Apache License, Version 2.0
+
+    vLLM (Apache-2.0) -- https://github.com/vllm-project/vllm
