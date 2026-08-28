@@ -183,6 +183,40 @@ config class, not a warning sign.
 
 ## Results
 
+### Headline — MTP k=4 + CUDA graphs, thinking off
+
+```
+TP4, 200K context, fp8_ds_mla KV, GPU KV cache 200,064 tokens, 98.07 GiB/rank
+```
+
+| concurrency | agg tok/s | per-stream | mean latency s |
+|---|---|---|---|
+| 1 | 12.12 | 12.12 | 21.13 |
+| 2 | 21.71 | 10.85 | 11.59 |
+| 3 | 28.30 | 9.43 | 12.67 |
+| 4 | 33.11 | 8.28 | 13.76 |
+| 5 | 39.97 | 7.99 | 17.89 |
+| 6 | **46.03** | 7.67 | 18.99 |
+
+For reference, the GLM-5.2 QuantTrio recipe on this same four-node hardware reports
+32.5 mean / 36 peak.
+
+> **A note on the earlier numbers below, and why per-node clocks are worth checking.**
+> The stage-1 and stage-2 tables that follow were measured while one of the four GPUs was
+> stuck at **721 MHz under load** versus 2476–2522 MHz on the other three — at 8.9 W and
+> 42 °C, fully utilized, with `clocks_throttle_reasons.active = 0x0` and `nvidia-smi -lgc`
+> silently ignored. In tensor parallelism every rank waits on the slowest, so a quarter of
+> the cluster was throttling all of them.
+>
+> The cause was a degraded power state after that node hard-crashed during the NVRM OOM
+> described below. **A clean reboot fixed it** (721 → 2262 MHz, 95.0 TFLOP/s bf16 on a
+> matmul burn); no software control had any effect. Re-measuring afterwards, with thinking
+> also switched off, gave the headline table above — **+25% at c6** over the same config.
+>
+> The tables below are kept as-is because the *relative* comparison between stages is still
+> valid (identical conditions), and because the failure is worth documenting. Read them as
+> a floor.
+
 ### Stage 1 — bare (no speculative decoding, no CUDA graphs)
 
 ```
@@ -298,6 +332,68 @@ If you are reproducing this, check per-node SM clocks under load before trusting
 throughput number. One quiet rank at a third clock gates the entire tensor-parallel group.
 
 ---
+
+### DFlash2 — what it needs, and where it currently stops
+
+Not yet working on this model. Recorded because the requirements are non-obvious and cost a
+lot of boots to establish.
+
+**vLLM v0.28.0 minimum.** `DFlash2DraftModel` was registered by
+[PR #52816](https://github.com/vllm-project/vllm/pull/52816) (merged 2026-08-21). Older
+builds reject the drafter outright:
+
+```
+Model architectures ['DFlash2DraftModel'] are not supported for now.
+Supported: ... 'DFlashDraftModel' ...          <- that is DFlash v1
+```
+
+Pin the **`v0.28.0` tag, not `main`** — there is a broken window 2026-08-22 → 08-25 where a
+merge conflict clobbered `decoder_layer_cls` and DFlash2 checkpoints fail to load
+(issue #53428, fixed by #53435).
+
+**Do not rename the architecture to sneak past an older build.** It routes to the DFlash1
+model class, which has no `attention_conv`, and if forced through it drafts as DFlash1
+**silently** — no error, only degraded acceptance.
+
+**The method string is `"dflash"`, not `"dflash2"`.** v1 vs v2 is dispatched by the
+drafter's `architectures` field. `num_speculative_tokens` is `block_size − 1 = 7`.
+
+**`--kv-cache-dtype fp8_ds_mla` is incompatible with the drafter.** That layout is
+MLA-specific, and the drafter's layers are plain sliding-window attention (`use_mla=False`).
+Every backend refuses:
+
+```
+No valid attention backend for AttentionSelectorConfig(head_size=128,
+  kv_cache_dtype=fp8_ds_mla, use_mla=False, has_sliding_window=True, use_non_causal=True)
+Reasons: {FLASH_ATTN: kv_cache_dtype not supported, FLASHINFER: ..., TRITON_ATTN: ...,
+          FLEX_ATTENTION: ..., TURBOQUANT: ...}
+```
+
+**Omitting `--kv-cache-dtype` does not help** — vLLM auto-re-selects `fp8_ds_mla` for a
+DeepSeek-MLA model. The same behaviour is reported at
+[zai-org/GLM-5.3-Flash discussion 19](https://huggingface.co/zai-org/GLM-5.3-Flash/discussions/19).
+The working GLM-5.3-**Flash** DFlash2 lane uses **`--kv-cache-dtype fp8_e4m3`** — generic
+per-tensor fp8, which applies to MLA and sliding-window layers alike. That is the next thing
+to try here and is untested on this model.
+
+**A KV-group patch will still be needed.** The Flash overlay's `patch_glm5_drafter_group.py`
+hooks `_get_kv_cache_groups_glm5_next`, which this model never reaches (it has no mamba
+layers, and its DSA indexer has `compress_ratio == 1`). Without an equivalent on the
+`deepseek_v2` path, the drafter's spec falls to the generic uniform-page branch and gets
+`page_size_padded` — the strided-view overrun that demanded 13.59 GB from a 377 MB tensor on
+Flash.
+
+And unlike Flash, **exact page fit is structurally impossible here**: the MLA page is
+`576 = 64 × 9` bytes/token, and that factor of 9 cannot divide evenly into a power-of-two
+drafter page at any dtype or TP degree. Flash escaped only because its NoPE MLA was
+`512 = 2⁹`. So the fix is compact *standalone* drafter tensors, costing about **+6.4%** of
+the KV pool rather than the zero-cost slot-sharing that worked on Flash.
+
+What is already confirmed working: the drafter loads, and the aux-capture taps resolve
+correctly — `Using Eagle3 auxiliary layers from config: (6, 20, 34, 48, 62, 76)`, which is
+`target_layer_ids [5,19,33,47,61,75]` plus the runner's +1. The target side needs **no**
+patch: `DeepseekV2Model` already declares `SupportsEagle3` and already captures aux states,
+and this model has no mHC, so the Flash `patch_glm_aux_capture.py` is not needed at all.
 
 ## Notes for anyone reproducing this
 
