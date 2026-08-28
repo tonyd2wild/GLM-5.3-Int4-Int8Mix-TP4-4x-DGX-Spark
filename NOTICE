@@ -53,3 +53,18 @@ QUANTIZATION LIBRARY
         Apache License, Version 2.0
 
     vLLM (Apache-2.0) -- https://github.com/vllm-project/vllm
+
+--------------------------------------------------------------------------------
+SERVING-STACK ATTRIBUTION CHAIN
+--------------------------------------------------------------------------------
+
+The GB10 / sm121 serving stack (launch/launch-glm53-tp4.sh and the sm12x kernel
+overlays it depends on) inherits the full attribution chain of the GLM-5.2 repo it
+is derived from:
+
+    tonyd2wild/GLM-5.2-QuantTrio-200K-4x-DGX-Spark--36tok-s
+
+which credits the sm_121 sparse-MLA port and Triton kernels by CosmicRaisins, the
+kernel mods by ciprianveg, the spark-vllm-docker harness by eugr, and the NVIDIA
+developer forum thread 374125 contributors. None of that work is re-vendored here;
+see that repository NOTICE for the complete list.
