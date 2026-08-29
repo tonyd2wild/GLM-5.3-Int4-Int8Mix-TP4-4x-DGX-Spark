@@ -1,78 +1,83 @@
 #!/usr/bin/env python3
-"""C1-C6 concurrency sweep against the GLM-5.3 Int4-Int8Mix TP4 endpoint.
+"""C1-C6 concurrency sweep for GLM-5.3-Int4-Int8Mix + DFlash2 on 4x DGX Spark.
 
-NOTE: this lane serves with thinking ON (no --reasoning-parser, and
-chat_template_kwargs enable_thinking=false does NOT take on this build), so
-completion tokens include reasoning traces. Numbers are NOT comparable to
-thinking-off benchmarks.
+Reports END-TO-END tok/s (wall clock from request send to full response), not the
+engine's internal decode rate -- per Tony's instruction "tes tok/s on that not decode".
+
+C1 uses the count-to-100 prompt he asked for as the first bench.
 """
-import json
-import time
-import threading
-import urllib.request
+import json, sys, time, urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 URL = "http://localhost:8000/v1/chat/completions"
 MODEL = "glm-5.3"
-MAX_TOKENS = 256
-
-PROMPTS = [
-    "Explain in one paragraph how a bicycle stays upright when moving.",
-    "Write a Python function that reverses a linked list. Code only.",
-    "Summarize the causes of the 1929 stock market crash in one paragraph.",
-    "What is the difference between TCP and UDP? Two sentences.",
-    "Write a SQL query that finds the second highest salary in a table.",
-    "Explain what a hash table is and its average time complexity.",
-]
+COUNT100 = "Count from 1 to 100. One number per line. Nothing else."
 
 
-def one(prompt, out, idx):
-    body = json.dumps({
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": MAX_TOKENS,
-        "temperature": 0,
-    }).encode()
+def metrics():
+    try:
+        with urllib.request.urlopen("http://localhost:8000/metrics", timeout=15) as r:
+            txt = r.read().decode()
+    except Exception:
+        return None
+    out = {}
+    for line in txt.splitlines():
+        if line.startswith("#"):
+            continue
+        for k, tag in (("spec_decode_num_draft_tokens_total", "draft"),
+                       ("spec_decode_num_accepted_tokens_total", "acc")):
+            if k in line:
+                out[tag] = float(line.rsplit(" ", 1)[1])
+    return out
+
+
+def one(prompt, max_tokens):
+    body = json.dumps({"model": MODEL,
+                       "messages": [{"role": "user", "content": prompt}],
+                       "max_tokens": max_tokens, "temperature": 0}).encode()
     req = urllib.request.Request(URL, data=body,
                                  headers={"Content-Type": "application/json"})
     t0 = time.time()
-    try:
-        with urllib.request.urlopen(req, timeout=600) as r:
-            d = json.loads(r.read())
-        dt = time.time() - t0
-        ct = d["usage"]["completion_tokens"]
-        pt = d["usage"]["prompt_tokens"]
-        out[idx] = (dt, ct, pt)
-    except Exception as e:
-        out[idx] = (time.time() - t0, 0, 0)
-        print(f"    stream {idx} FAILED: {e}")
+    with urllib.request.urlopen(req, timeout=1200) as r:
+        d = json.loads(r.read())
+    dt = time.time() - t0
+    u = d["usage"]
+    return {"dt": dt, "out": u["completion_tokens"], "inp": u["prompt_tokens"],
+            "text": (d["choices"][0]["message"].get("content") or "")}
 
 
-print(f"{'conc':>5} {'wall_s':>8} {'tot_tok':>8} {'agg_tok/s':>10} "
-      f"{'per_stream':>11} {'mean_lat_s':>11}")
-print("-" * 62)
-
-results = {}
-for conc in range(1, 7):
-    out = [None] * conc
-    threads = [threading.Thread(target=one, args=(PROMPTS[i % len(PROMPTS)], out, i))
-               for i in range(conc)]
+def run(conc, prompt, max_tokens, label):
+    before = metrics()
     t0 = time.time()
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    with ThreadPoolExecutor(max_workers=conc) as ex:
+        res = list(ex.map(lambda _: one(prompt, max_tokens), range(conc)))
     wall = time.time() - t0
+    after = metrics()
+    tot = sum(r["out"] for r in res)
+    per = [r["out"] / r["dt"] for r in res]
+    acc = ""
+    if before and after and after.get("draft", 0) > before.get("draft", 0):
+        d = after["draft"] - before["draft"]
+        a = after["acc"] - before["acc"]
+        acc = f"  accept={100*a/d:.1f}%"
+    print(f"C{conc}  {label:>12}  wall={wall:6.2f}s  out_tok={tot:5d}  "
+          f"AGG={tot/wall:7.2f} tok/s  per-stream={sum(per)/len(per):6.2f} tok/s{acc}",
+          flush=True)
+    return res, tot / wall
 
-    tot = sum(o[1] for o in out if o)
-    lats = [o[0] for o in out if o]
-    agg = tot / wall if wall else 0
-    per = agg / conc if conc else 0
-    mean_lat = sum(lats) / len(lats) if lats else 0
-    results[conc] = dict(wall=round(wall, 2), tokens=tot,
-                         agg_tok_s=round(agg, 2), per_stream=round(per, 2),
-                         mean_latency_s=round(mean_lat, 2))
-    print(f"{conc:>5} {wall:>8.2f} {tot:>8} {agg:>10.2f} {per:>11.2f} {mean_lat:>11.2f}")
-    time.sleep(3)
 
-print()
-print(json.dumps(results, indent=2))
+if __name__ == "__main__":
+    print("=== C1: count to 100 (Tony's first bench) ===", flush=True)
+    res, _ = run(1, COUNT100, 1000, "count100")
+    txt = res[0]["text"]
+    lines = [l.strip() for l in txt.splitlines() if l.strip()]
+    ok = sum(1 for i, l in enumerate(lines[:100], 1) if l.rstrip(".") == str(i))
+    print(f"     correctness: {ok}/100 lines correct, {len(lines)} lines emitted")
+    print(f"     head: {txt[:60]!r}")
+    print(f"     tail: {txt[-60:]!r}")
+    print(flush=True)
+
+    print("=== C1-C6 sweep (same prompt, 256 tok each) ===", flush=True)
+    for c in range(1, 7):
+        run(c, "Write a detailed technical explanation of how speculative "
+               "decoding accelerates LLM inference.", 256, "sweep")
