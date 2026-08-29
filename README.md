@@ -13,10 +13,12 @@ four 121 GB unified-memory boxes.
 > The weights are **not** in this repository (GitHub cannot hold 378 GB). This repo holds the
 > quantization script, the verification gates, and the serving recipe.
 
-> **Status: stage 1 complete.** The quant is finished, structurally verified, and proven to
-> generate coherent output at TP4. Speculative decoding and CUDA graphs are being layered on
-> now; this README grows one stage at a time. Numbers below are labelled with exactly what
-> was and was not enabled when they were measured.
+> **Status: DFlash2 stage complete (2026-08-29).** The quant is finished, structurally
+> verified, and served at TP4 with both MTP-4 and DFlash2 speculative decoding. DFlash2
+> reaches **51.03 tok/s** end-to-end on structured output — 1.90× over MTP-4 — producing
+> byte-identical text. Numbers below are labelled with exactly what was and was not enabled
+> when they were measured. The 69-scenario quality eval has **not** been run; no claim of
+> quality parity with the BF16 base is made here.
 
 ---
 
@@ -183,6 +185,57 @@ config class, not a warning sign.
 
 ## Results
 
+### DFlash2 speculative decoding — 1.90× on structured output
+
+Measured 2026-08-29. **End-to-end** tok/s (wall clock, request send → full
+response received), not the engine's internal decode rate.
+
+```
+TP4, 80K context, fp8_ds_mla KV (sliding-window layers exempted),
+GPU KV cache 179,479 tokens, image vllm-glm52-b12x:dflash2-port2, k=7
+```
+
+Count to 100, temperature 0:
+
+| lane | wall | out tok | **e2e tok/s** | acceptance | correct |
+|---|---|---|---|---|---|
+| **DFlash2 (k=7)** | 3.92 s | 200 | **51.03** | 95.6% | 100/100 |
+| MTP-4 | 7.43 s | 200 | 26.91 | 97.0% | 100/100 |
+
+C1–C6 sweep, 256-token free-form prose each:
+
+| concurrency | DFlash2 agg | accept | MTP-4 agg | accept |
+|---|---|---|---|---|
+| 1 | 19.24 | 23.8% | 19.62 | 37.4% |
+| 2 | 27.60 | 23.0% | 26.17 | 36.7% |
+| 3 | 35.39 | 23.7% | 32.54 | 40.5% |
+| 4 | 43.97 | 24.1% | 45.97 | 38.1% |
+| 5 | 46.83 | 23.5% | 52.07 | 39.0% |
+| 6 | **50.28** | 23.0% | 51.93 | 39.4% |
+
+DFlash2's win is workload-dependent: near-2× on structured / low-entropy output
+(counting, and by extension code, lists, JSON) where the block-diffusion drafter
+reaches 95.6% acceptance, and roughly a wash with MTP-4 on free-form prose at
+~23% acceptance.
+
+Correctness is exact — speculative decoding is distribution-preserving, so at
+temperature 0 both lanes emit byte-identical text:
+
+```
+"The capital of France is" →
+' Paris. Distance from London to Paris is 343 km, while straight line distance is 344 km. Direct'
+```
+
+**Known tuning gap:** the earlier GLM-5.3-Flash DFlash2 deployment recorded
+40–53% acceptance on mixed prompts. The 23% here points at aux hidden-state layer
+selection not being tuned for the 743B model — it uses `deepseek_v2.py`'s stock
+Eagle3 aux layers rather than a GLM-specific choice. This degrades silently: it
+costs speed, never correctness.
+
+Build recipe and the full failure analysis: [`dflash2-port/README.md`](dflash2-port/README.md).
+Raw numbers: [`bench/RESULTS-dflash2.md`](bench/RESULTS-dflash2.md).
+
+
 ### Headline — MTP k=4 + CUDA graphs, thinking off
 
 ```
@@ -333,67 +386,82 @@ throughput number. One quiet rank at a third clock gates the entire tensor-paral
 
 ---
 
-### DFlash2 — what it needs, and where it currently stops
+### DFlash2 — what it needs (SOLVED 2026-08-29)
 
-Not yet working on this model. Recorded because the requirements are non-obvious and cost a
-lot of boots to establish.
+Working. See [`dflash2-port/`](dflash2-port/) for the build. Recorded here because the
+requirements are non-obvious and cost a lot of boots to establish.
 
-**vLLM v0.28.0 minimum.** `DFlash2DraftModel` was registered by
-[PR #52816](https://github.com/vllm-project/vllm/pull/52816) (merged 2026-08-21). Older
-builds reject the drafter outright:
+**The real blocker was never DFlash2 — it was the kernels.** The image that has DFlash2
+(`keys-vllm-glm53:b12x-dflash2-v1`, built for GLM-5.3-**Flash**) emits prompt-independent
+digit soup on the 743B model. Proven by control: the garbage persists with the drafter
+**completely removed**. Its `B12X_MLA_SPARSE` backend lacks the `~/glm-triton` sm12x Triton
+overlays (`sm12x_mqa.py`, `b12x_sparse_helpers.py`, …) and the `GLM52_*_TRITON` env switches
+that the working lane sets. GLM sparse MLA routes 100% of prompt tokens through
+`forward_mqa` on this hardware, so the paged-MQA kernel *is* the prompt attention — and
+unpatched it is wrong on GB10's 48-SM parts. Five boots spent forcing MQA, forcing MHA,
+dropping the FlashInfer sampler, disabling autotune and mounting the kpool indexer patch all
+failed. The auto backend is no escape either: without the glm-triton kernels it does not run
+at all (96% GPU utilization at 10 W — a spin, not compute).
 
-```
-Model architectures ['DFlash2DraftModel'] are not supported for now.
-Supported: ... 'DFlashDraftModel' ...          <- that is DFlash v1
-```
+**So port DFlash2 into the proven image, not the other way round.**
 
-Pin the **`v0.28.0` tag, not `main`** — there is a broken window 2026-08-22 → 08-25 where a
-merge conflict clobbered `decoder_layer_cls` and DFlash2 checkpoints fail to load
-(issue #53428, fixed by #53435).
+**`DFlash2DraftModel` needs PR #52816.** Upstream that means vLLM ≥ v0.28.0; here it was
+back-ported onto `0.23.1rc1.dev190`, re-anchored (that base's DFlash v1 is ~7 weeks older
+and its `DFlashQwen3Attention` had no sliding-window support and no `layer_idx` at all).
+Pin the **`v0.28.0` tag, not `main`**, if using upstream — there is a broken window
+2026-08-22 → 08-25 where a merge conflict clobbered `decoder_layer_cls` (issue #53428,
+fixed by #53435).
 
 **Do not rename the architecture to sneak past an older build.** It routes to the DFlash1
-model class, which has no `attention_conv`, and if forced through it drafts as DFlash1
-**silently** — no error, only degraded acceptance.
+model class, which has no `attention_conv`, and drafts as DFlash1 **silently** — no error,
+only degraded acceptance.
 
 **The method string is `"dflash"`, not `"dflash2"`.** v1 vs v2 is dispatched by the
 drafter's `architectures` field. `num_speculative_tokens` is `block_size − 1 = 7`.
 
-**`--kv-cache-dtype fp8_ds_mla` is incompatible with the drafter.** That layout is
-MLA-specific, and the drafter's layers are plain sliding-window attention (`use_mla=False`).
-Every backend refuses:
+**`fp8_ds_mla` is incompatible with the drafter's layers**, which are plain sliding-window
+attention (`use_mla=False`). Every backend refuses:
 
 ```
 No valid attention backend for AttentionSelectorConfig(head_size=128,
-  kv_cache_dtype=fp8_ds_mla, use_mla=False, has_sliding_window=True, use_non_causal=True)
-Reasons: {FLASH_ATTN: kv_cache_dtype not supported, FLASHINFER: ..., TRITON_ATTN: ...,
-          FLEX_ATTENTION: ..., TURBOQUANT: ...}
+  kv_cache_dtype=fp8_ds_mla, use_mla=False, use_non_causal=True)
 ```
 
-**Omitting `--kv-cache-dtype` does not help** — vLLM auto-re-selects `fp8_ds_mla` for a
-DeepSeek-MLA model. The same behaviour is reported at
-[zai-org/GLM-5.3-Flash discussion 19](https://huggingface.co/zai-org/GLM-5.3-Flash/discussions/19).
-The working GLM-5.3-**Flash** DFlash2 lane uses **`--kv-cache-dtype fp8_e4m3`** — generic
-per-tensor fp8, which applies to MLA and sliding-window layers alike. That is the next thing
-to try here and is untested on this model.
+Fix: **`--kv-cache-dtype fp8_ds_mla --kv-cache-dtype-skip-layers sliding_window`** — MLA
+layers keep the packed layout, drafter layers fall back to bf16. Omitting `--kv-cache-dtype`
+does not help; vLLM auto-re-selects `fp8_ds_mla` for a DeepSeek-MLA model (same behaviour at
+[zai-org/GLM-5.3-Flash discussion 19](https://huggingface.co/zai-org/GLM-5.3-Flash/discussions/19)).
 
-**A KV-group patch will still be needed.** The Flash overlay's `patch_glm5_drafter_group.py`
-hooks `_get_kv_cache_groups_glm5_next`, which this model never reaches (it has no mamba
-layers, and its DSA indexer has `compress_ratio == 1`). Without an equivalent on the
-`deepseek_v2` path, the drafter's spec falls to the generic uniform-page branch and gets
-`page_size_padded` — the strided-view overrun that demanded 13.59 GB from a 377 MB tensor on
-Flash.
+**A per-layer assert also has to go.** `Attention.get_kv_cache_spec` asserts
+`not model_config.use_mla` for any sliding-window layer — a *model-level* flag gating a
+*per-layer* decision. The method is on the non-MLA `Attention` class, so a SWA layer
+reaching it is genuinely non-MLA: it is the drafter's. See
+[`patches/patch_swa_under_mla.sh`](patches/patch_swa_under_mla.sh).
+
+**A KV-group patch is required.** The Flash overlay's `patch_glm5_drafter_group.py` hooks
+`_get_kv_cache_groups_glm5_next`, which this model never reaches. Without an equivalent on
+the `deepseek_v2` path, `{78 MLA + 78 DSA-indexer + 6 SlidingWindowSpec}` misses every fast
+path and falls into `unify_kv_cache_spec_page_size`, which raises on the indexer's
+132 B/token page. See [`dflash2-port/patch_base_kv_dsa.py`](dflash2-port/patch_base_kv_dsa.py).
+
+> **Never set `page_size_padded` on the drafter group.** Padding routes the runner into a
+> strided view and FlashInfer's int kernel block sizes split the manager block ×36, each
+> charged a full page stride — 13.59 GB demanded from a 377 MB tensor.
 
 And unlike Flash, **exact page fit is structurally impossible here**: the MLA page is
 `576 = 64 × 9` bytes/token, and that factor of 9 cannot divide evenly into a power-of-two
 drafter page at any dtype or TP degree. Flash escaped only because its NoPE MLA was
-`512 = 2⁹`. So the fix is compact *standalone* drafter tensors, costing about **+6.4%** of
-the KV pool rather than the zero-cost slot-sharing that worked on Flash.
+`512 = 2⁹`. So the drafter gets compact *standalone* tensors, costing a few percent of the
+KV pool rather than the zero-cost slot-sharing that worked on Flash. In practice this is
+also why 200K context no longer fits — 11.71 GiB needed vs 10.2 GiB available — hence the
+80K serving context.
 
-What is already confirmed working: the drafter loads, and the aux-capture taps resolve
-correctly — `Using Eagle3 auxiliary layers from config: (6, 20, 34, 48, 62, 76)`, which is
-`target_layer_ids [5,19,33,47,61,75]` plus the runner's +1. The target side needs **no**
-patch: `DeepseekV2Model` already declares `SupportsEagle3` and already captures aux states,
-and this model has no mHC, so the Flash `patch_glm_aux_capture.py` is not needed at all.
+The target side needs **no** patch: `DeepseekV2Model` already declares `SupportsEagle3` and
+already captures aux states, and this model has no mHC, so the Flash `patch_glm_aux_capture.py`
+is not needed at all. Aux taps resolve as
+`Using Eagle3 auxiliary layers from config: (6, 20, 34, 48, 62, 76)` — `target_layer_ids
+[5,19,33,47,61,75]` plus the runner's +1. **These are stock and not tuned for this model**,
+which is the leading suspect for the ~23% prose acceptance versus 40–53% on Flash.
 
 ## Notes for anyone reproducing this
 
