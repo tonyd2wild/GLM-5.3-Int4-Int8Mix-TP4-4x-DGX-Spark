@@ -185,6 +185,54 @@ config class, not a warning sign.
 
 ## Results
 
+### NVFP4 KV cache — 317,278-token pool at 300K context
+
+Measured 2026-08-29. **End-to-end** tok/s (wall clock, request send → full
+response received), not the engine's internal decode rate.
+
+```
+image    vllm-node-tf5-glm52-b12x:nvfp4-v1
+overlay  /var/tmp/glm-triton-nvfp4      ← NOT ~/glm-triton; this is the switch
+kv       nvfp4_ds_mla (400 B/token vs fp8_ds_mla's 656)
+ctx      300,000        KV pool 317,278 tokens        MTP k=5
+```
+
+| lane | count100 | C1 | C2 | C3 | C4 | C5 | C6 | KV pool | ctx |
+|---|---|---|---|---|---|---|---|---|---|
+| **NVFP4 + MTP-5** | 25.37 | 17.78 | 26.29 | 34.07 | 40.34 | 46.20 | **53.31** | **317,278** | **300K** |
+| fp8 + DFlash2 (k=7) | **53.32** | 18.70 | 27.34 | 35.37 | 40.96 | 45.96 | 49.88 | 179,479 | 80K |
+| fp8 + MTP-4 | 26.91 | 19.62 | 26.17 | 32.54 | 45.97 | 52.07 | 51.93 | 200,064 | 200K |
+
+count-to-100: **100/100 lines correct, 93.7% MTP acceptance**, 7.88 s wall.
+Sweep acceptance 29.5–33.1%.
+
+NVFP4 buys **+77% KV pool** and **3.75× context** for ~6% single-stream throughput
+versus fp8 + MTP-4, and posts the best C6 aggregate of any lane measured.
+Structured-output single-stream still belongs to fp8 + DFlash2 (53.32) — that gap
+is the drafter, not the KV format.
+
+**The enabling switch is the overlay directory, not the image.** There are two
+kernel overlay dirs on these nodes and only **2 of their 10 files differ**:
+
+```python
+# /var/tmp/glm-triton-nvfp4/flashmla_sparse.py
+supported_kv_cache_dtypes = ["auto","bfloat16","fp8_ds_mla","nvfp4_ds_mla","fp8"]
+#                                                ^^^^^^^^^^^^ absent from the image
+#                                                             and from ~/glm-triton
+```
+
+Point the launcher at `~/glm-triton` while asking for `nvfp4_ds_mla` and backend
+selection fails. `patch_flashmla_ops.py` is identical in both and is *not* the
+mechanism.
+
+**Trap: pin `cudagraph_capture_sizes`.** With `{"cudagraph_mode":"FULL"}` and no
+sizes, the first concurrent **chat** request killed the engine with
+`EngineCore ... KeyError: 'chatcmpl-<id>'`. Raw `/v1/completions` was unaffected,
+so it looks like a chat-template bug — it is not. Pin `[6,12,18,24,30,36]`.
+
+Full write-up: [`bench/RESULTS-nvfp4-kv.md`](bench/RESULTS-nvfp4-kv.md).
+Launcher: [`launch/launch-glm53-nvfp4.sh`](launch/launch-glm53-nvfp4.sh).
+
 ### DFlash2 speculative decoding — 1.98× on structured output
 
 Measured 2026-08-29. **End-to-end** tok/s (wall clock, request send → full
