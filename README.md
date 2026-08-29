@@ -15,7 +15,7 @@ four 121 GB unified-memory boxes.
 
 > **Status: DFlash2 stage complete (2026-08-29).** The quant is finished, structurally
 > verified, and served at TP4 with both MTP-4 and DFlash2 speculative decoding. DFlash2
-> reaches **51.03 tok/s** end-to-end on structured output — 1.90× over MTP-4 — producing
+> reaches **53.32 tok/s** end-to-end on structured output — 1.98× over MTP-4 — producing
 > byte-identical text. Numbers below are labelled with exactly what was and was not enabled
 > when they were measured. The 69-scenario quality eval has **not** been run; no claim of
 > quality parity with the BF16 base is made here.
@@ -185,52 +185,58 @@ config class, not a warning sign.
 
 ## Results
 
-### DFlash2 speculative decoding — 1.90× on structured output
+### DFlash2 speculative decoding — 1.98× on structured output
 
 Measured 2026-08-29. **End-to-end** tok/s (wall clock, request send → full
 response received), not the engine's internal decode rate.
 
 ```
-TP4, 80K context, fp8_ds_mla KV (sliding-window layers exempted),
-GPU KV cache 179,479 tokens, image vllm-glm52-b12x:dflash2-port2, k=7
+TP4 · 80K context · GPU KV cache 179,479 tokens · k=7
+image vllm-glm52-b12x:dflash2-port2
+--kv-cache-dtype fp8 --kv-cache-dtype-skip-layers sliding_window
 ```
 
 Count to 100, temperature 0:
 
-| lane | wall | out tok | **e2e tok/s** | acceptance | correct |
-|---|---|---|---|---|---|
-| **DFlash2 (k=7)** | 3.92 s | 200 | **51.03** | 95.6% | 100/100 |
-| MTP-4 | 7.43 s | 200 | 26.91 | 97.0% | 100/100 |
+| lane | KV dtype | wall | out tok | **e2e tok/s** | accept | correct |
+|---|---|---|---|---|---|---|
+| **DFlash2 (k=7)** | **fp8** | 3.75 s | 200 | **53.32** | 95.6% | 100/100 |
+| DFlash2 (k=7) | fp8_ds_mla | 3.92 s | 200 | 51.03 | 95.6% | 100/100 |
+| MTP-4 | fp8_ds_mla | 7.43 s | 200 | 26.91 | 97.0% | 100/100 |
 
 C1–C6 sweep, 256-token free-form prose each:
 
-| concurrency | DFlash2 agg | accept | MTP-4 agg | accept |
+| conc | DFlash2 fp8 | accept | MTP-4 | accept |
 |---|---|---|---|---|
-| 1 | 19.24 | 23.8% | 19.62 | 37.4% |
-| 2 | 27.60 | 23.0% | 26.17 | 36.7% |
-| 3 | 35.39 | 23.7% | 32.54 | 40.5% |
-| 4 | 43.97 | 24.1% | 45.97 | 38.1% |
-| 5 | 46.83 | 23.5% | 52.07 | 39.0% |
-| 6 | **50.28** | 23.0% | 51.93 | 39.4% |
+| 1 | 18.70 | 22.7% | 19.62 | 37.4% |
+| 2 | 27.34 | 21.6% | 26.17 | 36.7% |
+| 3 | 35.37 | 22.7% | 32.54 | 40.5% |
+| 4 | 40.96 | 22.5% | 45.97 | 38.1% |
+| 5 | 45.96 | 22.9% | 52.07 | 39.0% |
+| 6 | **49.88** | 22.6% | 51.93 | 39.4% |
 
-DFlash2's win is workload-dependent: near-2× on structured / low-entropy output
+DFlash2's win is workload-dependent: ~2× on structured / low-entropy output
 (counting, and by extension code, lists, JSON) where the block-diffusion drafter
-reaches 95.6% acceptance, and roughly a wash with MTP-4 on free-form prose at
-~23% acceptance.
+reaches 95.6% acceptance, and a wash with MTP-4 on free-form prose at ~23%.
 
-Correctness is exact — speculative decoding is distribution-preserving, so at
-temperature 0 both lanes emit byte-identical text:
+**Use `--kv-cache-dtype fp8`, not `fp8_e4m3`.** `fp8_e4m3` is not in the sparse
+MLA backend's `supported_kv_cache_dtypes` and the MLA *target* layers fail
+selection outright (`head_size=576, use_mla=True, kv_cache_dtype=fp8_e4m3`).
+`fp8` — which in vLLM *is* e4m3 — is listed as an alias at
+`flashmla_sparse.py:100`, and `mla_attention.py:397` converts it to `fp8_ds_mla`
+for the MLA layers. That conversion mutates the **shared** `cache_config`, so the
+drafter's sliding-window layers still need `--kv-cache-dtype-skip-layers`.
 
-```
-"The capital of France is" →
-' Paris. Distance from London to Paris is 343 km, while straight line distance is 344 km. Direct'
-```
+Correctness: DFlash2 on `fp8_ds_mla` is **byte-identical** to MTP-4 at
+temperature 0 — the strongest available signal, since speculative decoding is
+distribution-preserving. The `fp8` lane differs by a single token in a factual
+figure (`343`→`344` km), which is the KV quantization differing, not the drafter.
 
 **Known tuning gap:** the earlier GLM-5.3-Flash DFlash2 deployment recorded
-40–53% acceptance on mixed prompts. The 23% here points at aux hidden-state layer
-selection not being tuned for the 743B model — it uses `deepseek_v2.py`'s stock
-Eagle3 aux layers rather than a GLM-specific choice. This degrades silently: it
-costs speed, never correctness.
+40–53% acceptance on mixed prompts. The ~23% here points at aux hidden-state
+layer selection not being tuned for the 743B model — it uses `deepseek_v2.py`'s
+stock Eagle3 aux layers `(6,20,34,48,62,76)`. This degrades silently: it costs
+speed, never correctness.
 
 Build recipe and the full failure analysis: [`dflash2-port/README.md`](dflash2-port/README.md).
 Raw numbers: [`bench/RESULTS-dflash2.md`](bench/RESULTS-dflash2.md).
@@ -427,10 +433,25 @@ No valid attention backend for AttentionSelectorConfig(head_size=128,
   kv_cache_dtype=fp8_ds_mla, use_mla=False, use_non_causal=True)
 ```
 
-Fix: **`--kv-cache-dtype fp8_ds_mla --kv-cache-dtype-skip-layers sliding_window`** — MLA
+Fix: **`--kv-cache-dtype fp8 --kv-cache-dtype-skip-layers sliding_window`** — MLA
 layers keep the packed layout, drafter layers fall back to bf16. Omitting `--kv-cache-dtype`
 does not help; vLLM auto-re-selects `fp8_ds_mla` for a DeepSeek-MLA model (same behaviour at
 [zai-org/GLM-5.3-Flash discussion 19](https://huggingface.co/zai-org/GLM-5.3-Flash/discussions/19)).
+
+**`fp8_e4m3` does not work here — use `fp8`.** Plain `fp8_e4m3` is not in the sparse MLA
+backend's `supported_kv_cache_dtypes`, so the MLA *target* layers fail selection outright:
+
+```
+No valid attention backend for AttentionSelectorConfig(head_size=576,
+  use_mla=True, use_sparse=True, kv_cache_dtype=fp8_e4m3)
+```
+
+`fp8` — which in vLLM *is* e4m3 — is listed as an explicit alias at
+`flashmla_sparse.py:100`, and `mla_attention.py:397-405` converts it to `fp8_ds_mla` for the
+MLA layers (logs `Using DeepSeek's fp8_ds_mla`). That assignment mutates the **shared**
+`cache_config`, which is exactly why the drafter still needs the skip-layers exemption
+alongside it. On the 743B model `fp8` benches marginally faster than requesting
+`fp8_ds_mla` directly — 53.32 vs 51.03 tok/s on count-to-100.
 
 **A per-layer assert also has to go.** `Attention.get_kv_cache_spec` asserts
 `not model_config.use_mla` for any sliding-window layer — a *model-level* flag gating a

@@ -135,7 +135,7 @@ docker run -d --name "$NAME" \
     --tensor-parallel-size 4 --pipeline-parallel-size 1 \
     --max-model-len 80000 --max-num-seqs "$MAXSEQS" --max-num-batched-tokens 8192 \
     --gpu-memory-utilization 0.91 --kv-cache-memory-bytes 10950000000 \
-    --kv-cache-dtype fp8_ds_mla --kv-cache-dtype-skip-layers sliding_window \
+    --kv-cache-dtype fp8 --kv-cache-dtype-skip-layers sliding_window \
     --distributed-executor-backend mp --compilation-config '{"cudagraph_mode":"FULL"}' \
     --nnodes 4 --node-rank "$NODE_RANK" \
     --master-addr "$HEAD_IP" --master-port "$MASTER_PORT" \
