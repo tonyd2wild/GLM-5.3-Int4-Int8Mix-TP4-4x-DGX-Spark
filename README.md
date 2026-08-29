@@ -15,7 +15,8 @@ four 121 GB unified-memory boxes.
 
 > **Status: DFlash2 stage complete (2026-08-29).** The quant is finished, structurally
 > verified, and served at TP4 with both MTP-4 and DFlash2 speculative decoding. DFlash2
-> reaches **53.32 tok/s** end-to-end on structured output — 1.98× over MTP-4 — producing
+> reaches **53.32 tok/s** end-to-end on structured output — 1.98× over MTP-4. NVFP4 KV
+> adds a **293,447-token pool at 270K context** while keeping 51.03 tok/s, producing
 > byte-identical text. Numbers below are labelled with exactly what was and was not enabled
 > when they were measured. The 69-scenario quality eval has **not** been run; no claim of
 > quality parity with the BF16 base is made here.
@@ -184,6 +185,40 @@ config class, not a warning sign.
 ---
 
 ## Results
+
+### NVFP4 KV + DFlash2 — the best-of-both lane
+
+NVFP4's 400 B/token KV record **and** the DFlash2 drafter together. Previously
+impossible because the NVFP4 image shipped without DFlash2 support; both bases
+turn out to be the same vLLM commit, so the DFlash2 port applies unchanged.
+
+```
+image  vllm-glm52-b12x:nvfp4-dflash2-p2      spec  dflash k=7
+kv     nvfp4_ds_mla --kv-cache-dtype-skip-layers sliding_window
+ctx    270,000        KV pool  293,447 tokens
+```
+
+| lane | count100 | C1 | C2 | C3 | C4 | C5 | C6 | KV pool | ctx |
+|---|---|---|---|---|---|---|---|---|---|
+| **NVFP4 + DFlash2** | **51.03** | 17.81 | 28.16 | 34.86 | 38.72 | 43.11 | 50.98 | **293,447** | **270K** |
+| NVFP4 + MTP-5 | 25.37 | 17.78 | 26.29 | 34.07 | 40.34 | 46.20 | **53.31** | **317,278** | 300K |
+| fp8 + DFlash2 (k=7) | **53.32** | 18.70 | 27.34 | 35.37 | 40.96 | 45.96 | 49.88 | 179,479 | 80K |
+| fp8 + MTP-4 | 26.91 | 19.62 | 26.17 | 32.54 | 45.97 | 52.07 | 51.93 | 200,064 | 200K |
+
+count-to-100: 100/100 correct, 95.6% acceptance. It keeps essentially all of
+fp8+DFlash2's structured-output speed (−4%) while carrying a **63% larger KV
+pool** and **3.4× the context**.
+
+**DCP is impossible with DFlash2.** The drafter's `SlidingWindowSpec` layers trip
+`kv_cache_interface.py:528  assert decode_context_parallel_size == 1, "DCP not
+support sliding window."` — no image or dtype changes it. DCP requires MTP, which
+is why the reference 655K lane used MTP k=3. Pick DFlash2 (speed) or DCP (pool).
+
+**Leave headroom for the drafter group:** 300K fails with `11.06 GiB needed vs
+10.2 GiB available`; the drafter costs ~8% of the pool versus the MTP lane.
+
+Full write-up: [`bench/RESULTS-nvfp4-dflash2.md`](bench/RESULTS-nvfp4-dflash2.md).
+Launcher: [`launch/launch-glm53-nvfp4-dflash2.sh`](launch/launch-glm53-nvfp4-dflash2.sh).
 
 ### NVFP4 KV cache — 317,278-token pool at 300K context
 
