@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="330" viewBox="0 0 900 330" role="img" aria-label="Aggregate throughput, mixed real prompts (tok/s)">
+<rect width="900" height="330" fill="#1a1a19"/>
+<text x="24.0" y="30.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="16" fill="#ffffff" text-anchor="start" font-weight="600">Aggregate throughput, mixed real prompts (tok/s)</text>
+<rect x="24" y="47" width="12" height="12" rx="3" fill="#3987e5"/>
+<text x="41.0" y="57.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#c3c2b7" text-anchor="start" font-weight="normal">Lane 2: DCP4 + NVFP4 KV</text>
+<rect x="228.6" y="47" width="12" height="12" rx="3" fill="#d95926"/>
+<text x="245.6" y="57.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="12" fill="#c3c2b7" text-anchor="start" font-weight="normal">Lane 1: DCP4 + fp8 KV</text>
+<line x1="64" x2="824" y1="270.0" y2="270.0" stroke="#383835" stroke-width="1"/>
+<text x="56.0" y="274.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781" text-anchor="end" font-weight="normal">0</text>
+<line x1="64" x2="824" y1="225.0" y2="225.0" stroke="#2c2c2a" stroke-width="1"/>
+<text x="56.0" y="229.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781" text-anchor="end" font-weight="normal">20</text>
+<line x1="64" x2="824" y1="180.0" y2="180.0" stroke="#2c2c2a" stroke-width="1"/>
+<text x="56.0" y="184.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781" text-anchor="end" font-weight="normal">40</text>
+<line x1="64" x2="824" y1="135.0" y2="135.0" stroke="#2c2c2a" stroke-width="1"/>
+<text x="56.0" y="139.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781" text-anchor="end" font-weight="normal">60</text>
+<line x1="64" x2="824" y1="90.0" y2="90.0" stroke="#2c2c2a" stroke-width="1"/>
+<text x="56.0" y="94.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781" text-anchor="end" font-weight="normal">80</text>
+<text x="64.0" y="288.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#898781" text-anchor="middle" font-weight="normal">C1</text>
+<text x="216.0" y="288.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#898781" text-anchor="middle" font-weight="normal">C2</text>
+<text x="368.0" y="288.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#898781" text-anchor="middle" font-weight="normal">C3</text>
+<text x="520.0" y="288.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#898781" text-anchor="middle" font-weight="normal">C4</text>
+<text x="672.0" y="288.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#898781" text-anchor="middle" font-weight="normal">C5</text>
+<text x="824.0" y="288.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#898781" text-anchor="middle" font-weight="normal">C6</text>
+<polyline points="64.0,187.2 216.0,157.1 368.0,142.7 520.0,143.0 672.0,129.1 824.0,162.2" fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="64.0" cy="187.2" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="216.0" cy="157.1" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="368.0" cy="142.7" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="520.0" cy="143.0" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="672.0" cy="129.1" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="824.0" cy="162.2" r="4" fill="#3987e5" stroke="#1a1a19" stroke-width="2"/>
+<polyline points="64.0,188.7 216.0,161.8 368.0,150.1 520.0,146.3 672.0,187.6 824.0,166.1" fill="none" stroke="#d95926" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="64.0" cy="188.7" r="4" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="216.0" cy="161.8" r="4" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="368.0" cy="150.1" r="4" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="520.0" cy="146.3" r="4" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="672.0" cy="187.6" r="4" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="824.0" cy="166.1" r="4" fill="#d95926" stroke="#1a1a19" stroke-width="2"/>
+<circle cx="836.0" cy="162.2" r="3.5" fill="#3987e5"/>
+<text x="843.0" y="166.2" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#ffffff" text-anchor="start" font-weight="600">48</text>
+<circle cx="836.0" cy="176.2" r="3.5" fill="#d95926"/>
+<text x="843.0" y="180.2" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="11" fill="#ffffff" text-anchor="start" font-weight="600">46</text>
+<text x="24.0" y="322.0" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-size="10" fill="#898781" text-anchor="start" font-weight="normal"></text>
+</svg>

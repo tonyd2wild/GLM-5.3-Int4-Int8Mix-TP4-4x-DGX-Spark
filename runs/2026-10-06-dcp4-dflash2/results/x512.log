@@ -1,0 +1,10 @@
+healthy 07:24:31
+:18:32 [model_runner.py:315] Model loading took 96.32 GiB and 401.304830 seconds
+ [kv_cache_utils.py:2304] GPU KV cache size: 594,532 tokens
+ [kv_cache_utils.py:2305] Maximum concurrency for 524,288 tokens per request: 1.13x
+ [core.py:337] init engine (profile, create kv cache, warmup model) took 125.20 s (compilation: 63.02 s)
+GUARD attempt=1 waited_s=5.1 max_busy=1 own=1 clean=True rc=0
+sanity exit=0
+needle exit=0 07:48:43
+{"label": "dcp4-nvfp4-512k-needle", "prompt_tokens": 490425, "ttft_s": 1423.4, "prefill_tok_s": 345, "needles_found": "3/3", "answer": "falcon=29593 orchid=71500 granite=89571", "error": null}
+== x512 DONE 07:48:43

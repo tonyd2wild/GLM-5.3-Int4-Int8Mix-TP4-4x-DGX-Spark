@@ -1,0 +1,37 @@
+== dcp4-fp8 @ http://127.0.0.1:8000 ==
+  warm-up 8.4s
+  meta: {'num_gpu_blocks': 1820, 'block_size': 64, 'kv_pool_tokens': 116480, 'preemptions_total': 0.0}
+ [single]
+  count100   dec med   53.93 peak   55.18  e2e   50.63  ttft 0.280s  answer@ 0.57s  think 27ch  toks 211  acc 0.9652 len 7.756
+  count300   dec med   52.92 peak   54.68  e2e   51.56  ttft 0.280s  answer@ 0.70s  think 30ch  toks 680  acc 0.9738 len 7.817
+  code       dec med   36.18 peak   39.78  e2e   35.27  ttft 0.530s  answer@ 0.53s  think 0ch  toks 700  acc 0.6901 len 5.831
+  json       dec med   35.95 peak   36.59  e2e   35.24  ttft 0.470s  answer@ 0.90s  think 18ch  toks 781  acc 0.6575 len 5.602
+   (interference: server saw 2.0 requests > 1; retry 1)
+   (interference: server saw 2.0 requests > 1; retry 2)
+   (interference: server saw 2.0 requests > 1; retry 3)
+   (interference: server saw 2.0 requests > 1; retry 4)
+   (interference: server saw 2.0 requests > 1; retry 5)
+   (interference: server saw 2.0 requests > 1; retry 1)
+  sql        dec med   31.12 peak   31.47  e2e   30.36  ttft 0.490s  answer@ 1.52s  think 0ch  toks 546  acc 0.4602 len 4.221
+  tooluse    dec med   57.50 peak   57.51  e2e   24.33  ttft 0.820s  answer@ 0.82s  think 0ch  toks 34  acc 0.8571 len 7.0
+  math       dec med   36.17 peak   40.47  e2e   35.19  ttft 0.440s  answer@ 3.80s  think 201ch  toks 464  acc 0.6727 len 5.709
+  prose      dec med   15.76 peak   16.17  e2e   15.65  ttft 0.370s  answer@ 0.80s  think 44ch  toks 700  acc 0.2019 len 2.413
+  narrative  dec med   14.72 peak   14.94  e2e   14.59  ttft 0.490s  answer@ 0.49s  think 0ch  toks 712  acc 0.1694 len 2.186
+  summary    dec med   19.30 peak   19.64  e2e   19.09  ttft 0.460s  answer@ 0.46s  think 0ch  toks 700  acc 0.2703 len 2.892
+ [sweep]
+  C1 agg med 33.88 peak 36.12  per-stream 34.65  ttft p90 0.48s  fails 0  preempt 0.0  acc 0.6321
+  C2 agg med 32.77 peak 48.1  per-stream 24.9  ttft p90 1.06s  fails 0  preempt 0.0  acc 0.4743
+  C3 agg med 28.56 peak 53.3  per-stream 19.63  ttft p90 1.66s  fails 0  preempt 0.0  acc 0.3758
+  C4 agg med 54.88 peak 54.99  per-stream 19.18  ttft p90 2.55s  fails 0  preempt 0.0  acc 0.4188
+   (interference: server saw 6.0 requests > 5; retry 1)
+  C5 agg med 32.7 peak 36.63  per-stream 9.99  ttft p90 2.07s  fails 0  preempt 0.0  acc 0.3608
+  C6 agg med 41.69 peak 46.18  per-stream 13.66  ttft p90 2.13s  fails 0  preempt 0.0  acc 0.3798
+ [prefill]
+  prefill ~  6144: 21745 tok  ttft 54.79s  397 tok/s
+  prefill ~ 30720: 106130 tok  ttft 291.76s  364 tok/s
+  prefill ~114688: FAILED HTTP Error 400: Bad Request
+ [longctx]
+  longctx C1: {'agg_tok_s': None, 'per_stream_decode': None, 'ttft_s': None, 'wall_s': 0.4, 'fails': 1, 'clean': True}
+  longctx C2: {'agg_tok_s': None, 'per_stream_decode': None, 'ttft_s': None, 'wall_s': 0.8, 'fails': 2, 'clean': True}
+  meta: {'num_gpu_blocks': 1820, 'block_size': 64, 'kv_pool_tokens': 116480, 'preemptions_total': 0.0}
+  -> results/dcp4-fp8.json

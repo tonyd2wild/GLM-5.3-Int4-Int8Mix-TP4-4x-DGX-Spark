@@ -1,0 +1,1 @@
+{"label": "dcp4-fp8-needle250k", "prompt_tokens": 254388, "ttft_s": 742.7, "prefill_tok_s": 343, "needles_found": "3/3", "answer": "falcon=19885 orchid=66131 granite=92499", "error": null}

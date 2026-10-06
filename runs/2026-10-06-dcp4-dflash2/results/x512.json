@@ -1,0 +1,1 @@
+{"maxlen": 524288, "kvbytes": 6000000000, "pool": 594532, "measured_str": "~580,000 (490,425 tokens used 84.6%)", "needle": {"needles_found": "3/3", "prompt_tokens": 490425, "ttft_s": 1423.4}, "mem_min_gb": 3.8, "mem_min_gb_262k": 2.3}

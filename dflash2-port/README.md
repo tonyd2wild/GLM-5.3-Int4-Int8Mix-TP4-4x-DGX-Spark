@@ -87,8 +87,19 @@ in their own group appended **last**.
 
 ## Build and verify
 
+**Files and layout.** The build expects `~/dflash2-port/patches/` to hold the four scripts in this
+directory (`patch_base_dflash2.py`, `patch_base_kv_dsa.py`, `verify_dflash2.py`, and
+**`dsa_block.py`**). `dsa_block.py` was missing from the first publication of this repo, so
+`patch_base_kv_dsa.py` could not run for anyone else; it is restored here from the original
+2026-08-29 build tree (identical on all four build nodes, sha256 `22ed5b16fbe5c53d...`). Thanks to
+[@omanuke](https://github.com/omanuke) for reporting it and to [@ajclark](https://github.com/ajclark)
+for publishing a reconstruction that reproduced the same KV geometry (179,479-token pool) in the
+meantime ([issue #1](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/1)).
+
 ```bash
-bash ~/dflash2-port/build_node.sh          # run on every node
+mkdir -p ~/dflash2-port/patches && cp dflash2-port/*.py ~/dflash2-port/patches/
+bash dflash2-port/build_node.sh            # fp8 lane image  -> vllm-glm52-b12x:dflash2-port
+bash dflash2-port/build_node_nvfp4.sh      # NVFP4 lane image -> vllm-glm52-b12x:nvfp4-dflash2
 docker run --rm -v $HOME/dflash2-port/patches:/vp:ro \
   --entrypoint python3 vllm-glm52-b12x:dflash2-port /vp/verify_dflash2.py
 ```
@@ -105,3 +116,29 @@ batch, padded rows would be attributed to request 0. Not triggered by default
 `probabilistic`). Fixing it properly also requires `is_valid_req` masks in
 `gumbel_block_argmax`, which is shared with the production MTP-4 sampling path —
 so it was left alone deliberately.
+
+## Drafter weights
+
+[`incoai/GLM-5.3-DFlash2`](https://huggingface.co/incoai/GLM-5.3-DFlash2): the 743B model's
+DFlash2 drafter (4.58 GiB, `DFlash2DraftModel`, hidden 6144, six `sliding_attention` layers,
+`target_layer_ids [5, 19, 33, 47, 61, 75]`). Its `config.json` is byte-identical to the one these
+lanes run (sha256 `f59e1da17d41d24a...`). Not `incoai/GLM-5.3-Flash-DFlash2`, which is the
+320B Flash model's drafter. Launchers expect it at `<models>/GLM-5.3-DFlash2-draft`.
+
+## Without the donor image
+
+`keys-vllm-glm53:b12x-dflash2-v1` is not published. The three DFlash2 files it supplies are
+upstream since vLLM PR #52816. [@omanuke](https://github.com/omanuke) found the revision whose
+anchors match this port: take them at vLLM **`660a446fc93ebb780144585b3fdc34ed96fa755c`**, not the
+merge commit (`2b4f36d0` refactored `speculator.py` to import `gumbel_noised_argmax`, so the
+`tl_rand32` anchor no longer matches):
+
+```
+vllm/model_executor/models/qwen3_dflash2.py
+vllm/v1/worker/gpu/spec_decode/dflash2/__init__.py
+vllm/v1/worker/gpu/spec_decode/dflash2/speculator.py
+```
+
+On that route `verify_dflash2.py` reports 12/13: check 6 imports both `tl_rand32` and
+`gumbel_noised_argmax`, and no single upstream revision of `speculator.py` has both. That check is
+stricter than the build, not a build failure.

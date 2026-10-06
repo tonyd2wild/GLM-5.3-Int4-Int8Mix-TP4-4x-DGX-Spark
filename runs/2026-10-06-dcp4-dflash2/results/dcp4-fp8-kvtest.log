@@ -1,0 +1,67 @@
+dcp4-fp8-kv1-200k: 1 prompts, rendered tokens [204389]
+before: {'num_requests_running': 0.0, 'num_requests_waiting': 0.0, 'kv_cache_usage_perc': 0.0, 'num_preemptions_total': 0.0, 'pool_tokens': 312035}
+t=     3s kv=  0.0% run=0.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    13s kv=  4.3% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    23s kv=  5.3% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    33s kv=  6.2% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    43s kv=  7.0% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    53s kv=  7.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    63s kv=  8.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    74s kv=  9.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=    84s kv= 10.0% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=    94s kv= 10.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   104s kv= 11.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   114s kv= 12.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   124s kv= 13.5% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   134s kv= 14.4% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   144s kv= 14.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   154s kv= 15.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   164s kv= 16.5% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   174s kv= 17.4% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   184s kv= 17.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   194s kv= 18.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   204s kv= 19.6% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.9, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   214s kv= 20.5% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.6, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   224s kv= 21.3% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   234s kv= 21.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   244s kv= 22.6% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   254s kv= 23.5% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   265s kv= 23.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   275s kv= 24.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   285s kv= 25.6% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   295s kv= 26.5% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   305s kv= 26.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   315s kv= 27.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   325s kv= 28.6% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   335s kv= 29.0% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   345s kv= 29.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   355s kv= 30.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   365s kv= 31.6% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   375s kv= 32.5% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   385s kv= 32.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.7, 'reddie_r0': 3.1, 'spark4_r1': 4.5}
+t=   396s kv= 33.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.8, 'reddie_r0': 3.2, 'spark4_r1': 4.5}
+t=   406s kv= 34.6% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.8, 'reddie_r0': 3.2, 'spark4_r1': 4.5}
+t=   416s kv= 35.1% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.8, 'reddie_r0': 3.2, 'spark4_r1': 4.5}
+t=   426s kv= 36.0% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.8, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   436s kv= 36.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.8, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   446s kv= 37.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.7, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   456s kv= 38.2% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   466s kv= 39.0% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   476s kv= 39.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   486s kv= 40.4% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   496s kv= 41.2% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   506s kv= 42.1% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.8, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   516s kv= 42.5% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   526s kv= 43.4% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.3, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   536s kv= 44.2% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   546s kv= 44.6% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   556s kv= 45.1% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.2, 'spark4_r1': 4.6}
+t=   566s kv= 45.9% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   576s kv= 46.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   587s kv= 47.2% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+req 0: first token at t=592s (ttft 589.0s)
+t=   597s kv= 45.7% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+t=   607s kv= 45.8% run=1.0 wait=0.0 pre=0.0 mem={'asusi_r2': 4.4, 'bluey_r3': 4.9, 'reddie_r0': 3.3, 'spark4_r1': 4.6}
+req 0: done t=613.4s usage={'prompt_tokens': 204389, 'total_tokens': 204901, 'completion_tokens': 512} err=None
+SUMMARY dcp4-fp8-kv1-200k: pool 312035 tok; expected per request ~65.5% (prompt/pool); observed peak with 1 running 47.2%; peak overall 47.2%; min MemAvailable {'asusi_r2': 4.3, 'bluey_r3': 4.6, 'reddie_r0': 3.1, 'spark4_r1': 4.5}; preemptions 0.0; aborted False
+GUARD attempt=1 waited_s=5.1 max_busy=1 own=1 clean=True rc=0

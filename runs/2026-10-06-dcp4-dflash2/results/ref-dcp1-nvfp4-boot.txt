@@ -1,0 +1,4 @@
+5 [model_runner.py:315] Model loading took 97.03 GiB and 388.178271 seconds
+ [kv_cache_utils.py:2304] GPU KV cache size: 173,447 tokens
+ [kv_cache_utils.py:2305] Maximum concurrency for 131,072 tokens per request: 1.32x
+ [core.py:337] init engine (profile, create kv cache, warmup model) took 122.63 s (compilation: 64.66 s)

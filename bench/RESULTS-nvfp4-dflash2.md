@@ -48,6 +48,10 @@ layers under an MLA target. See [`patches/patch_swa_under_mla.sh`](../patches/pa
 
 ## Two constraints worth knowing
 
+> **Superseded 2026-10-06.** DCP and DFlash2 do run together: [@ajclark](https://github.com/ajclark)'s
+> placement patch set shards the target cache and keeps the drafter group replicated. See
+> [`dcp/`](../dcp/) and the README's DCP4 + DFlash2 section. The analysis below is kept as written.
+
 **1. DCP is impossible in this combination.** The drafter's `SlidingWindowSpec`
 layers trip a hard vLLM assert:
 
