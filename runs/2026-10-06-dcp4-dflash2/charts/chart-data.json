@@ -1,0 +1,90 @@
+{
+ "suite": {
+  "kind": "suite2",
+  "title": "GLM-5.3 743B on 4x DGX Spark: decode speed by prompt type (tok/s, single stream)",
+  "sub": "temperature 0, reasoning_effort low, median of 3",
+  "cats": [
+   "count to 100 *",
+   "count to 300 *",
+   "tool call",
+   "math",
+   "code",
+   "json",
+   "sql",
+   "summary",
+   "prose",
+   "narrative"
+  ],
+  "series": [
+   [
+    "Lane 2: DCP4 + NVFP4 KV",
+    [
+     54.12,
+     54.44,
+     57.59,
+     34.32,
+     39.91,
+     36.05,
+     36.52,
+     19.91,
+     16.99,
+     15.18
+    ]
+   ],
+   [
+    "Lane 1: DCP4 + fp8 KV",
+    [
+     53.93,
+     52.92,
+     57.5,
+     36.17,
+     36.18,
+     35.95,
+     32.25,
+     19.3,
+     15.76,
+     14.72
+    ]
+   ]
+  ],
+  "note": ""
+ },
+ "sweep": {
+  "kind": "sweep",
+  "title": "Aggregate throughput, mixed real prompts (tok/s)",
+  "sub": "8 prompt types rotated across streams (no counting), peak of 3 rounds (table has median and peak)",
+  "x": [
+   "C1",
+   "C2",
+   "C3",
+   "C4",
+   "C5",
+   "C6"
+  ],
+  "series": [
+   [
+    "Lane 2: DCP4 + NVFP4 KV",
+    [
+     36.78,
+     50.19,
+     56.58,
+     56.45,
+     62.63,
+     47.89
+    ]
+   ],
+   [
+    "Lane 1: DCP4 + fp8 KV",
+    [
+     36.12,
+     48.1,
+     53.3,
+     54.99,
+     36.63,
+     46.18
+    ]
+   ]
+  ],
+  "note": ""
+ }
+}

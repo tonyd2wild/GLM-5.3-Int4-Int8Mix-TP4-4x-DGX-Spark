@@ -13,13 +13,151 @@ four 121 GB unified-memory boxes.
 > The weights are **not** in this repository (GitHub cannot hold 378 GB). This repo holds the
 > quantization script, the verification gates, and the serving recipe.
 
-> **Status: DFlash2 stage complete (2026-08-29).** The quant is finished, structurally
-> verified, and served at TP4 with both MTP-4 and DFlash2 speculative decoding. DFlash2
-> reaches **53.32 tok/s** end-to-end on structured output — 1.98× over MTP-4. NVFP4 KV
-> adds a **293,447-token pool at 270K context** while keeping 51.03 tok/s, producing
-> byte-identical text. Numbers below are labelled with exactly what was and was not enabled
-> when they were measured. The 69-scenario quality eval has **not** been run; no claim of
-> quality parity with the BF16 base is made here.
+> **Status (2026-10-06): two DCP4 lanes.** TP4 + decode context parallelism (DCP4) + DFlash2 k=7, with
+> [@ajclark](https://github.com/ajclark)'s DCP patch set. **Lane 2 (NVFP4 KV)** holds a **689,772-token KV
+> pool at 262K context**, 2.35× the previous best lane, at the same decode speed, and serves a
+> **524,288-token window** (594,532-token pool, needle 3/3 at 490,425 tokens). Lane 1 (fp8 KV) holds 462,308. The trade-off is prefill
+> (~400 tok/s). Earlier stages (quantization 2026-08-28, DFlash2 and NVFP4 KV 2026-08-29) are below,
+> unchanged. The 69-scenario quality eval has **not** been run; no claim of quality parity with the BF16
+> base is made here.
+
+---
+
+## ⭐ New (2026-10-06): two DCP4 lanes, up to a 689,772-token KV pool with DFlash2
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="runs/2026-10-06-dcp4-dflash2/charts/suite-dark.svg">
+  <img alt="Single-stream decode by prompt type, NVFP4 lane vs fp8 lane: count to 100 * 54.1 vs 53.9; count to 300 * 54.4 vs 52.9; tool call 57.6 vs 57.5; code 39.9 vs 36.2; json 36.0 vs 36.0; math 34.3 vs 36.2; sql 36.5 vs 32.2; summary 19.9 vs 19.3; prose 17.0 vs 15.8; narrative 15.2 vs 14.7" src="runs/2026-10-06-dcp4-dflash2/charts/suite-light.svg" width="880">
+</picture>
+
+| prompt | **Lane 2** decode tok/s | Lane 2 end to end | Lane 1 decode | Lane 1 end to end | Lane 2 TTFT / time to answer | Lane 2 accept, mean len |
+|---|---|---|---|---|---|---|
+| count to 100 * | 54.1 | 50.8 | 53.9 | 50.6 | 0.28 / 0.70 s | 96%, 7.69 |
+| count to 300 * | 54.4 | 53.3 | 52.9 | 51.6 | 0.28 / 0.71 s | 97%, 7.78 |
+| tool call | 57.6 | 24.1 | 57.5 | 24.3 | 0.83 s | 86%, 7.00 |
+| code | 39.9 | 38.8 | 36.2 | 35.3 | 0.54 s | 71%, 5.97 |
+| json | 36.0 | 35.2 | 36.0 | 35.2 | 0.47 / 0.77 s | 61%, 5.26 |
+| math | 34.3 | 33.2 | 36.2 | 35.2 | 0.46 / 3.74 s | 57%, 4.99 |
+| sql | 36.5 | 35.5 | 32.2 | 31.2 | 0.47 / 1.35 s | 63%, 5.42 |
+| summary | 19.9 | 19.7 | 19.3 | 19.1 | 0.46 s | 25%, 2.78 |
+| prose | 17.0 | 16.9 | 15.8 | 15.7 | 0.39 / 0.97 s | 21%, 2.45 |
+| narrative | 15.2 | 15.0 | 14.7 | 14.6 | 0.49 s | 17%, 2.19 |
+
+Single stream, temperature 0, `reasoning_effort: low`, median of 3. \* Counting prompts show the speculative-decoding ceiling (draft acceptance ~97%), not a typical rate; prose-like text accepts ~20% of drafted tokens. The tool call is 34 tokens, so its end-to-end rate is mostly time to first token. **The two lanes decode at the same speed:** they run the same kernels, and per-prompt gaps of up to ~10% either way track the draft acceptance of that run, which varies run to run on this stack. What separates them is the KV pool.
+
+Two new lanes, both TP4 + **decode context parallelism (DCP4)** + DFlash2 k=7 on the same four Sparks. DCP
+shards the target model's KV cache across the four ranks instead of keeping a copy on each, so the same
+memory holds four times the context. The DCP + DFlash2 patch set is **[Allan Clark (@ajclark)](https://github.com/ajclark)'s**
+([issue #4](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/4),
+[his repo](https://github.com/ajclark/GLM-5.3-DCP4-DFlash2-NVMe-KV-Offload-4x-DGX-Spark), vendored in
+[`dcp/`](dcp/) under his Apache-2.0 license). Lane 2 combines it with this repo's NVFP4 KV port, which nobody
+had run together before.
+
+| lane | KV cache | context | KV pool (vLLM) | KV pool (measured) | KV per rank | launcher |
+|---|---|---|---|---|---|---|
+| **Lane 2: DCP4 + NVFP4 + DFlash2** (serving default) | `nvfp4_ds_mla`, 400 B/token | 262,144 | **689,772** (2.63×) | ~650,000 | 7 GB | [`launch-glm53big-dcp4-nvfp4.sh`](launch/launch-glm53big-dcp4-nvfp4.sh) |
+| Lane 2 at 512K | `nvfp4_ds_mla` | 524,288 | 594,532 (1.13×) | ~580,000 (490,425 tokens used 84.6%) | 6.0 GB | same, `MAXLEN=524288 KVBYTES=6000000000` |
+| Lane 1: DCP4 + fp8 + DFlash2 | `fp8_ds_mla`, 656 B/token | 262,144 | 462,308 (1.76×) | ~433,900 | 7 GB | [`launch-glm53big-dcp4.sh`](launch/launch-glm53big-dcp4.sh) |
+| previous best: NVFP4 + DFlash2, no DCP | `nvfp4_ds_mla` | 270,000 | 293,447 | not measured | 10.95 GB | [`launch-glm53-nvfp4-dflash2.sh`](launch/launch-glm53-nvfp4-dflash2.sh) |
+
+**What it costs: prefill.** DCP4 prefill runs at roughly 340-415 tok/s at every prompt length we tried (5K to
+490K tokens). On the same 15,662-token prompt the DCP1 reference answered in 29 s and DCP4 in 45 s, and a cold
+100K-token prompt takes about four and a half minutes. Decode is barely touched on this switched fabric: count-to-100 end to end is 50.8 tok/s against
+53.3 for the old DCP1 fp8 lane (about -5%; the old figure is from this repo's earlier harness), where ajclark
+measured about -22% on his switchless ring. Prefix caching hides most of the prefill cost for agents that resend
+the same context.
+
+### Concurrency, prefill and long context
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="runs/2026-10-06-dcp4-dflash2/charts/sweep-dark.svg">
+  <img alt="Aggregate throughput C1-C6 with mixed real prompts, peak of 3 rounds: C1 36.8 vs 36.1; C2 50.2 vs 48.1; C3 56.6 vs 53.3; C4 56.5 vs 55.0; C5 62.6 vs 36.6; C6 47.9 vs 46.2" src="runs/2026-10-06-dcp4-dflash2/charts/sweep-light.svg" width="880">
+</picture>
+
+| streams | **Lane 2** aggregate, median / peak | Lane 1 aggregate, median / peak | Lane 2 per-stream decode | Lane 2 TTFT p90 |
+|---|---|---|---|---|
+| C1 | 33.9 / 36.8 | 33.9 / 36.1 | 35.1 | 0.60 s |
+| C2 | 34.1 / 50.2 | 32.8 / 48.1 | 27.4 | 1.29 s |
+| C3 | 31.0 / 56.6 | 28.6 / 53.3 | 20.8 | 1.48 s |
+| C4 | 56.0 / 56.5 | 54.9 / 55.0 | 20.0 | 1.89 s |
+| C5 | 38.4 / 62.6 | 32.7 / 36.6 | 16.1 | 2.05 s |
+| C6 | 41.9 / 47.9 | 41.7 / 46.2 | 14.7 | 2.25 s |
+
+Mixed real prompts (code, json, sql, tool call, math, prose, narrative, summary rotated across streams), 3 rounds per level, 0 failures, 0 preemptions. A round's aggregate is bound by its slowest stream (a 700-token prose answer at ~15 tok/s), so median and peak differ with the mix.
+
+| | **Lane 2** (NVFP4) | Lane 1 (fp8) |
+|---|---|---|
+| cold prefill, 5,020 tokens | 416 tok/s (TTFT 12.1 s) | 395 tok/s at 5,019 tokens |
+| cold prefill, 31,900 tokens | 414 tok/s (TTFT 77.0 s) | 381 tok/s at 31,897 tokens |
+| cold prefill, 106,130 tokens | 395 tok/s (TTFT 268.7 s) | 364 tok/s at 106,130 tokens |
+| decode at a ~115K-token context, 1 stream | 16.2 tok/s (TTFT 290 s) | 17.0 tok/s (TTFT 313 s) |
+| needle test, 3 codes at 10/50/90% depth | **3/3** at 254,389 tokens (TTFT 677 s) | 3/3 at 254,388 tokens (TTFT 743 s) |
+| needle test at the 512K window | **3/3** at 490,425 tokens (TTFT 1423 s) | - |
+| one 204,902-token request holds | 31.5% of the pool | 47.2% of the pool (204,901 tokens) |
+| lowest free memory, any node | 2.3 GB (262K) / 3.8 GB (512K) | 3.1 GB |
+
+### Is the NVFP4 + DCP merge correct?
+
+Two of ajclark's DCP files had to be merged by hand with the NVFP4 port (`flashmla_sparse.py`, 5 conflicts;
+`b12x_sparse_helpers.py`, 2), two merged cleanly (`mla_attention.py`, `kv_cache_interface.py`), and one DCP
+guard that whitelisted only `fp8_ds_mla` was extended to `nvfp4_ds_mla` for the reason its own comment gives
+(inline scales, kernel-side dequantization, bf16 query). Notes: [`dcp/glm-dcp-nv/MERGE-NOTES.md`](dcp/glm-dcp-nv/MERGE-NOTES.md).
+
+The test was planned as a temperature-0 token-for-token match against the same stack at DCP1. **That test
+cannot pass on this stack for any lane:** the DCP1 reference run twice on the same prompts matched itself on
+only 3 of 8 (the MoE kernels use atomic adds, `VLLM_MARLIN_USE_ATOMIC_ADD=1`, so summation order differs run to
+run, and speculative decoding changes the batch shapes). So the gate scores the same token sequences on both
+lanes (teacher forcing, prefill only, no sampling or drafting) and compares every per-token log-probability:
+
+| | completion tokens: mean / p99 \|Δ logprob\| | prompt tokens: mean / p99 | long 20K prompt, completion mean |
+|---|---|---|---|
+| DCP1 reference vs itself (noise floor) | 0.0220 / 0.487 | 0.2530 / 1.127 | 0.0065 |
+| **DCP4 + NVFP4 vs reference** | **0.0232 / 0.551** | **0.2564 / 1.138** | **0.0030** |
+
+DCP4 sits inside the reference's own run-to-run noise, and on the longest prompt, where the cross-rank merge
+does the most work, closer to the reference than the reference is to itself. Greedy outputs: 4/8 identical
+(the reference vs itself: 3/8), including both long-context prompts (300 tokens identical at 15,662 tokens of
+context); every divergence is at a near-tie. Both buried codes were retrieved and count-to-100 was 100/100.
+Scorer: [`bench/tf_score.py`](runs/2026-10-06-dcp4-dflash2/bench/tf_score.py).
+
+### Findings worth knowing
+
+- **vLLM's KV-pool figure is close here, unlike on GLM-5.3-Flash.** One 204,901-token request held 47.2% of the
+  fp8 lane's blocks: measured capacity ~433,900 tokens against the reported 462,308 (6.5% optimistic).
+  On lane 2 a 204,902-token request held 31.5%: ~650,000 against the reported 689,772 (+6.1%). On the Flash model the same check found 2× ([Flash repo PR #12](https://github.com/tonyd2wild/GLM-5.3-Flash-NVFP4-1M-KV-4x-DGX-Spark/pull/12)).
+  The `cache_config_info` metric reports a third number (312,035 on lane 1); use the boot log or measure.
+- **Not deterministic at temperature 0**, even without DCP (above). Compare lanes with teacher forcing, not text.
+- **This vLLM streams thinking as `reasoning`, not `reasoning_content`.** A harness that only watches
+  `reasoning_content` measures time-to-first-*answer* and divides thinking tokens by the answer window:
+  math read 50 tok/s instead of 36. The harness here counts both and reports time to first token and time to
+  answer separately.
+- **Filler text tokenizes 3.5× denser on the 743B tokenizer** than on Flash's (`w123`-style words); size
+  synthetic prompts with `/tokenize`, not word counts.
+- **`--max-num-batched-tokens 2048` under DCP** (ajclark's validated value; the DCP-gathered fp32 accumulator
+  is 4× per token). 4096 is untested and is the first thing to try for faster prefill.
+
+### Method
+
+Speed-night harness ([`bench/`](runs/2026-10-06-dcp4-dflash2/bench/)), temperature 0, `reasoning_effort: low`,
+median of 3, GPUs verified first (85.7-90.1 TFLOPS bf16 on all four, `gputest.sh`). The endpoint served live
+agents during the runs, so every measurement waited for an idle server, sampled `running + waiting` while it
+ran, and was retried when other requests appeared; dirty cells were re-run (`rerun_dirty.py`). Raw JSON, logs
+and per-lane summaries: [`runs/2026-10-06-dcp4-dflash2/`](runs/2026-10-06-dcp4-dflash2/).
+
+### Run it
+
+```bash
+# every node: the DCP overlay set and the patched paged-MQA kernel (see dcp/README.md)
+cp -r dcp/glm-dcp ~/glm-dcp && cp -r dcp/glm-dcp-nv ~/glm-dcp-nv
+cp -a ~/glm-triton ~/glm-triton-aj && cp dcp/glm-triton-aj/sm12x_mqa.py ~/glm-triton-aj/
+# ranks 1, 2, 3 first, then 0 (rank 0 serves :8000)
+./launch/launch-glm53big-dcp4-nvfp4.sh <rank>                                  # lane 2, 262K
+MAXLEN=524288 KVBYTES=6000000000 ./launch/launch-glm53big-dcp4-nvfp4.sh <rank>   # lane 2 at 512K
+./launch/launch-glm53big-dcp4.sh <rank>                                        # lane 1 (fp8 image)
+```
+
+Lane 2 needs `vllm-glm52-b12x:nvfp4-dflash2-p2` ([`dflash2-port/build_node_nvfp4.sh`](dflash2-port/build_node_nvfp4.sh)),
+lane 1 `vllm-glm52-b12x:dflash2-port2`. Run the cache flusher during boot, as for every lane here.
 
 ---
 
@@ -209,10 +347,11 @@ count-to-100: 100/100 correct, 95.6% acceptance. It keeps essentially all of
 fp8+DFlash2's structured-output speed (−4%) while carrying a **63% larger KV
 pool** and **3.4× the context**.
 
-**DCP is impossible with DFlash2.** The drafter's `SlidingWindowSpec` layers trip
-`kv_cache_interface.py:528  assert decode_context_parallel_size == 1, "DCP not
-support sliding window."` — no image or dtype changes it. DCP requires MTP, which
-is why the reference 655K lane used MTP k=3. Pick DFlash2 (speed) or DCP (pool).
+~~**DCP is impossible with DFlash2.**~~ **Corrected 2026-10-06: it is possible.** The assert this
+paragraph quoted is real, but it is a placement rule, not a model or hardware limit.
+[@ajclark](https://github.com/ajclark) shards the sparse-MLA target cache across the DCP ranks and keeps
+the drafter's sliding-window group replicated, and DCP4 + DFlash2 now runs on this recipe: see
+[DCP4 + DFlash2](#dcp4--dflash2-2026-10-06) above and [`dcp/`](dcp/).
 
 **Leave headroom for the drafter group:** 300K fails with `11.06 GiB needed vs
 10.2 GiB available`; the drafter costs ~8% of the pool versus the MTP lane.
@@ -270,6 +409,14 @@ Launcher: [`launch/launch-glm53-nvfp4.sh`](launch/launch-glm53-nvfp4.sh).
 
 ### DFlash2 speculative decoding — 1.98× on structured output
 
+> **Known bug in this 80K lane (issue #6, found by [@ajclark](https://github.com/ajclark)).** The image's
+> DSA indexer carries a `+1` width patch inherited from the GLM-5.2 base: at `max-model-len 80000` the
+> runner allocates 1250 block-table columns and the indexer 1251, so a step that mixes a short prefill
+> tail with speculative decodes can raise `The expanded size of the tensor (1251) must match ... (1250)`
+> and take the engine down. The 270,000-token NVFP4 lane is not affected (both widths are 4220). The DCP
+> launchers mount his fixed indexer ([`dcp/glm-dcp/`](dcp/glm-dcp/)); prefer them, or mount those two
+> indexer files here.
+
 Measured 2026-08-29. **End-to-end** tok/s (wall clock, request send → full
 response received), not the engine's internal decode rate.
 
@@ -315,11 +462,13 @@ temperature 0 — the strongest available signal, since speculative decoding is
 distribution-preserving. The `fp8` lane differs by a single token in a factual
 figure (`343`→`344` km), which is the KV quantization differing, not the drafter.
 
-**Known tuning gap:** the earlier GLM-5.3-Flash DFlash2 deployment recorded
-40–53% acceptance on mixed prompts. The ~23% here points at aux hidden-state
-layer selection not being tuned for the 743B model — it uses `deepseek_v2.py`'s
-stock Eagle3 aux layers `(6,20,34,48,62,76)`. This degrades silently: it costs
-speed, never correctness.
+**Acceptance on prose is the drafter, not a wiring bug (corrected 2026-10-06).** An earlier version
+of this paragraph blamed the ~23% prose acceptance on the aux hidden-state layers. They are
+correct: the drafter's `dflash_config.target_layer_ids` are `[5, 19, 33, 47, 61, 75]`, vLLM's
+`eagle3_utils.py` maps them to aux layers `i + 1 = (6, 20, 34, 48, 62, 76)`, and `deepseek_v2.py`
+captures `hidden_states + residual` at the *input* of layer `i + 1`, which is the output of layer
+`i`: exactly the layers the drafter was trained on. Low prose acceptance is how well this drafter
+predicts free-form text for the 743B model.
 
 Build recipe and the full failure analysis: [`dflash2-port/README.md`](dflash2-port/README.md).
 Raw numbers: [`bench/RESULTS-dflash2.md`](bench/RESULTS-dflash2.md).
@@ -618,6 +767,24 @@ worker's RSS read 3.66 GiB. Because `oom_score` is computed from RSS, the OOM ki
 
 ## Credits
 
+- **[Allan Clark (@ajclark)](https://github.com/ajclark)**: decode context parallelism with DFlash2 (the patch set in
+  [`dcp/`](dcp/), [issue #4](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/4)), the DSA
+  indexer bounds fix ([#6](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/6)), the
+  de-specialised `sm12x_mqa.py` kernel, the multi-node NVMe KV tier ([#5](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/5),
+  not yet adopted here), the switchless 200G ring field report ([#2](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/2))
+  and a reconstruction of `dsa_block.py` that unblocked others ([#1](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/1)).
+  His repository: [ajclark/GLM-5.3-DCP4-DFlash2-NVMe-KV-Offload-4x-DGX-Spark](https://github.com/ajclark/GLM-5.3-DCP4-DFlash2-NVMe-KV-Offload-4x-DGX-Spark).
+- **[@omanuke](https://github.com/omanuke)**: reported the missing `dsa_block.py` (#1), identified the drafter weights,
+  and found the vLLM revision (`660a446`) that makes the donor-free DFlash2 build work.
+- **[@wuwenthink](https://github.com/wuwenthink)**: asked for a buildable image ([#3](https://github.com/tonyd2wild/GLM-5.3-Int4-Int8Mix-TP4-4x-DGX-Spark/issues/3)),
+  which is why the image build files are now all in this repository.
+- **[@knapcio](https://github.com/knapcio)**: his [GLM-5.3-Flash TP4 stack](https://github.com/knapcio/GLM-5.3-Flash-4x-DGX-Spark-TP4)
+  serves on this same fleet, and the KV-capacity check used here (real block usage against vLLM's estimate) came
+  out of measuring it. **[@brah_ddah](https://x.com/brah_ddah)** found the overcount on that stack that prompted it.
+- **[incoai](https://huggingface.co/incoai)**: the [GLM-5.3 DFlash2 drafter](https://huggingface.co/incoai/GLM-5.3-DFlash2).
+- **vLLM**: DFlash2 ([PR #52816](https://github.com/vllm-project/vllm/pull/52816)), shared indexer sizing
+  ([PR #50302](https://github.com/vllm-project/vllm/pull/50302), the upstream fix for the class of bug in #6), and
+  the engine everything here runs on.
 - **[QuantTrio](https://huggingface.co/QuantTrio)** — the Int4-Int8Mix recipe. The
   `config_groups` and `ignore` list here are theirs, taken verbatim from
   `QuantTrio/GLM-5.2-Int4-Int8Mix`.
@@ -625,7 +792,8 @@ worker's RSS read 3.66 GiB. Because `oom_score` is computed from RSS, the OOM ki
 - **[`tonyd2wild/GLM-5.2-QuantTrio-200K-4x-DGX-Spark--36tok-s`](https://github.com/tonyd2wild/GLM-5.2-QuantTrio-200K-4x-DGX-Spark--36tok-s)**
   — the GB10 serving recipe, sm12x kernel overlays and modded image this launcher derives
   from, which in turn derives from
-  [CosmicRaisins/glm-5.2-gb10](https://github.com/CosmicRaisins/glm-5.2-gb10).
+  [CosmicRaisins/glm-5.2-gb10](https://github.com/CosmicRaisins/glm-5.2-gb10) (sm12x Triton sparse-MLA kernels;
+  also crediting ciprianveg for the kernel mods and eugr for the spark-vllm-docker harness).
 - **vLLM** — `compressed-tensors`, and the packing routines this quantizer calls rather than
   reimplements.
 

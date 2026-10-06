@@ -68,3 +68,37 @@ which credits the sm_121 sparse-MLA port and Triton kernels by CosmicRaisins, th
 kernel mods by ciprianveg, the spark-vllm-docker harness by eugr, and the NVIDIA
 developer forum thread 374125 contributors. None of that work is re-vendored here;
 see that repository NOTICE for the complete list.
+
+--------------------------------------------------------------------------------
+DCP + DFLASH2, NVFP4 MERGE AND COMMUNITY FIXES (added 2026-10-06)
+--------------------------------------------------------------------------------
+
+DECODE CONTEXT PARALLELISM WITH DFLASH2 (dcp/glm-dcp/, launch/launch-glm53big-dcp4.sh)
+    The DCP + DFlash2 KV-placement patch set, the DSA indexer block-table bounds fix
+    (issue #6) and the de-specialised sm12x_mqa.py kernel are the work of
+
+        Allan Clark (@ajclark)
+        ajclark/GLM-5.3-DCP4-DFlash2-NVMe-KV-Offload-4x-DGX-Spark
+        https://github.com/ajclark/GLM-5.3-DCP4-DFlash2-NVMe-KV-Offload-4x-DGX-Spark
+        Copyright 2026 Allan Clark, licensed under the Apache License, Version 2.0
+        (dcp/LICENSE-ajclark, dcp/NOTICE-ajclark).
+
+    The files in dcp/glm-dcp/ and dcp/glm-triton-aj/ are copied unmodified from that
+    repository's stage/ directory at the commit in dcp/AJCLARK-COMMIT. Those files are
+    themselves modified copies of vLLM (commit ab666069) and of the CosmicRaisins
+    glm-5.2-gb10 sm12x overlays. launch/launch-glm53big-dcp4.sh is his legacy
+    launcher with this fleet's network, paths and sizes substituted.
+
+DCP + NVFP4 KV (dcp/glm-dcp-nv/, launch/launch-glm53big-dcp4-nvfp4.sh)
+    A three-way merge of the files above with this repository's NVFP4 KV port
+    (flashmla_sparse.py, b12x_sparse_helpers.py, mla_attention.py,
+    kv_cache_interface.py). Merge notes: dcp/glm-dcp-nv/MERGE-NOTES.md.
+
+DFLASH2 PORT (dflash2-port/)
+    dsa_block.py, missing from the first publication, restored from the original build
+    tree (issue #1, reported by @omanuke, with a reconstruction offered by @ajclark).
+    DFlash2DraftModel itself: vLLM PR #52816 (https://github.com/vllm-project/vllm/pull/52816).
+    Drafter weights: incoai/GLM-5.3-DFlash2 (https://huggingface.co/incoai/GLM-5.3-DFlash2).
+
+FIELD REPORTS AND REQUESTS
+    @ajclark (issue #2, switchless 200G RoCE ring), @wuwenthink (issue #3, image release).

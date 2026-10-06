@@ -1,0 +1,48 @@
+{
+ "label": "dcp4-fp8",
+ "time": "2026-10-06 02:53:00",
+ "all_pass": true,
+ "checks": {
+  "capital": {
+   "pass": true,
+   "content": "The capital of France is Paris.",
+   "wall_s": 0.69
+  },
+  "bat_ball": {
+   "pass": true,
+   "content": "$0.05",
+   "wall_s": 0.81
+  },
+  "tool_call": {
+   "pass": true,
+   "tool_calls": [
+    {
+     "id": "chatcmpl-tool-921427c7b3631e15",
+     "type": "function",
+     "function": {
+      "name": "get_weather",
+      "arguments": "{\"city\": \"Tokyo\"}"
+     }
+    }
+   ],
+   "finish": "tool_calls"
+  },
+  "thinking_off": {
+   "pass": true,
+   "reasoning_chars": 0,
+   "content": "The three primary colors are:\n\n1. **Red**\n2. **Blue**\n3. **Yellow**\n\nThese are the traditional primary colors used in ar"
+  },
+  "thinking_high": {
+   "pass": true,
+   "reasoning_chars": 16,
+   "content": "The three primary colors are:\n\n1. **Red**\n2. **Blue**\n3. **Yellow**\n\nThese are the traditional primary colors used in ar"
+  },
+  "count100": {
+   "pass": true,
+   "correct_lines": 100,
+   "lines": 100,
+   "completion_tokens": 200,
+   "wall_s": 4.56
+  }
+ }
+}

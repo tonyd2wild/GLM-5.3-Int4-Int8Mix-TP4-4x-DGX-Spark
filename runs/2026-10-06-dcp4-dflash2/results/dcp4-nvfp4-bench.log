@@ -1,0 +1,32 @@
+== dcp4-nvfp4 @ http://127.0.0.1:8000 ==
+  warm-up 38.7s
+  meta: {'num_gpu_blocks': 2726, 'block_size': 64, 'kv_pool_tokens': 174464, 'preemptions_total': 0.0}
+ [single]
+  count100   dec med   54.12 peak   55.41  e2e   50.80  ttft 0.280s  answer@ 0.70s  think 27ch  toks 211  acc 0.9552 len 7.687
+  count300   dec med   54.44 peak   54.54  e2e   53.33  ttft 0.280s  answer@ 0.71s  think 27ch  toks 679  acc 0.9689 len 7.782
+  code       dec med   39.91 peak   41.26  e2e   38.78  ttft 0.540s  answer@ 0.54s  think 0ch  toks 700  acc 0.7106 len 5.974
+  json       dec med   36.05 peak   37.04  e2e   35.23  ttft 0.470s  answer@ 0.77s  think 0ch  toks 678  acc 0.6092 len 5.264
+  sql        dec med   36.52 peak   38.28  e2e   35.46  ttft 0.470s  answer@ 1.35s  think 65ch  toks 550  acc 0.631 len 5.417
+  tooluse    dec med   57.59 peak   58.06  e2e   24.12  ttft 0.830s  answer@ 0.83s  think 0ch  toks 34  acc 0.8571 len 7.0
+  math       dec med   34.32 peak   34.87  e2e   33.25  ttft 0.460s  answer@ 3.74s  think 283ch  toks 496  acc 0.5694 len 4.986
+  prose      dec med   16.99 peak   17.70  e2e   16.87  ttft 0.390s  answer@ 0.97s  think 44ch  toks 700  acc 0.207 len 2.449
+   (interference: server saw 2.0 requests > 1; retry 1)
+   (interference: server saw 2.0 requests > 1; retry 2)
+   (interference: server saw 2.0 requests > 1; retry 3)
+  narrative  dec med   15.18 peak   15.65  e2e   15.00  ttft 0.490s  answer@ 0.49s  think 0ch  toks 728  acc 0.1701 len 2.191
+  summary    dec med   19.91 peak   20.40  e2e   19.68  ttft 0.460s  answer@ 0.46s  think 0ch  toks 700  acc 0.2545 len 2.781
+ [sweep]
+  C1 agg med 33.85 peak 36.78  per-stream 35.07  ttft p90 0.6s  fails 0  preempt 0.0  acc 0.5966
+  C2 agg med 34.14 peak 50.19  per-stream 27.44  ttft p90 1.29s  fails 0  preempt 0.0  acc 0.4531
+  C3 agg med 30.97 peak 56.58  per-stream 20.79  ttft p90 1.48s  fails 0  preempt 0.0  acc 0.3819
+  C4 agg med 55.99 peak 56.45  per-stream 19.98  ttft p90 1.89s  fails 0  preempt 0.0  acc 0.3904
+  C5 agg med 38.38 peak 62.63  per-stream 16.05  ttft p90 2.05s  fails 0  preempt 0.0  acc 0.3731
+  C6 agg med 41.92 peak 47.89  per-stream 14.68  ttft p90 2.25s  fails 0  preempt 0.0  acc 0.3887
+ [prefill]
+  prefill ~  1750: 5020 tok  ttft 12.08s  415 tok/s
+  prefill ~  8700: 31900 tok  ttft 76.95s  415 tok/s
+  prefill ~ 30720: 106130 tok  ttft 268.68s  395 tok/s
+ [longctx]
+  longctx C1: {'agg_tok_s': 0.64, 'per_stream_decode': 16.23, 'ttft_s': 289.73, 'wall_s': 301.6, 'fails': 0, 'clean': True}
+  meta: {'num_gpu_blocks': 2726, 'block_size': 64, 'kv_pool_tokens': 174464, 'preemptions_total': 0.0}
+  -> results/dcp4-nvfp4.json

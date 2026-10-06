@@ -1,0 +1,9 @@
+== dcp4-fp8-supp @ http://127.0.0.1:8000 ==
+  warm-up 42.6s
+  meta: {'num_gpu_blocks': 1820, 'block_size': 64, 'kv_pool_tokens': 116480, 'preemptions_total': 0.0}
+ [prefill]
+  prefill ~  1750: 5019 tok  ttft 12.71s  395 tok/s
+  prefill ~  8700: 31897 tok  ttft 83.64s  381 tok/s
+ [longctx]
+  longctx C1: {'agg_tok_s': 0.76, 'per_stream_decode': 16.96, 'ttft_s': 313.2, 'wall_s': 327.9, 'fails': 0, 'clean': True}
+   (interference: server saw 3.0 requests > 2; retry 1)
